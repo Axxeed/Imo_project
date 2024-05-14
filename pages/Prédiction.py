@@ -72,7 +72,7 @@ if st.button("Prediction"):
     pred = json.loads(response.content.decode("utf-8"))["result"][0]
     m2 = data["Surface Carrez du 1er lot"].astype(float).values
     mean = pred / m2
-    st.write(data["Nombre pieces principales"][0])
+
     with col2:
         st.title('Résultats')
         st.info('Prédiction du prix:')
