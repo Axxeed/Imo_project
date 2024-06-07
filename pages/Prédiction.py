@@ -97,10 +97,12 @@ if st.button("Prediction"):
 # Bouton pour enregistrer les données
 if st.button("Enregistrer"):
     if st.session_state['pred'] is not None and st.session_state['m2'] is not None:
-        supabase.table('prediction').insert({"Code postal_x": data["Code postal_x"][0],
-                                             "Surface Carrez du 1er lot": st.session_state['m2'][0],
-                                             "Nombre pieces principales": data["Nombre pieces principales"][0],
-                                             "Pred": float(st.session_state['pred'])}).execute()
+        supabase.table('prediction').insert({
+            "Code postal_x": data["Code postal_x"][0],
+            "Surface Carrez du 1er lot": st.session_state['m2'][0],
+            "Nombre pieces principales": data["Nombre pieces principales"][0],
+            "Pred": float(st.session_state['pred'])
+        }).execute()
     else:
         st.error("Veuillez effectuer une prédiction avant d'enregistrer.")
 
