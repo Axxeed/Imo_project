@@ -10,13 +10,10 @@ from utils import *
 import requests
 import json
 
-
-
 # Charger les données et le modèle
 df_reg = pd.read_csv("data/regions-france.csv")
 # with open("xgb.pkl", "rb") as file:
 #     model = pickle.load(file)
-
 
 # Créer un client Supabase
 url = st.secrets["SUPABASE_URL"]
@@ -55,28 +52,33 @@ with col1:
         selected_region_code = region_code_map[selected_region]
 
         data = {
-            "Code postal_x" : st.number_input("**Code postal**", value=None),
-            "Surface Carrez du 1er lot" : st.number_input("**Surface Carrez**"),
-            "Nombre pieces principales" : st.number_input("**Nombre pieces principales**"),
-            "code_region" : selected_region_code,
+            "Code postal_x": st.number_input("**Code postal**", value=None),
+            "Surface Carrez du 1er lot": st.number_input("**Surface Carrez**"),
+            "Nombre pieces principales": st.number_input("**Nombre pieces principales**"),
+            "code_region": selected_region_code,
         }
         data = pd.DataFrame(data, index=["1"])
 
+# Initialiser les variables de session
+if 'pred' not in st.session_state:
+    st.session_state['pred'] = None
+if 'm2' not in st.session_state:
+    st.session_state['m2'] = None
 
 # Bouton pour effectuer la prédiction
 if st.button("Prediction"):
     response = requests.get(
-    f'https://api-e1-2.onrender.com/predict?Code_postal_x={data["Code postal_x"][0]}&Surface_Carrez_du_1er_lot={data["Surface Carrez du 1er lot"][0]}&Nombre_pieces_principales={data["Nombre pieces principales"][0]}&code_region={data["code_region"][0]}'
-)
+        f'https://api-e1-2.onrender.com/predict?Code_postal_x={data["Code postal_x"][0]}&Surface_Carrez_du_1er_lot={data["Surface Carrez du 1er lot"][0]}&Nombre_pieces_principales={data["Nombre pieces principales"][0]}&code_region={data["code_region"][0]}'
+    )
 
-    pred = json.loads(response.content.decode("utf-8"))["result"][0]
-    m2 = data["Surface Carrez du 1er lot"].astype(float).values
-    mean = pred / m2
+    st.session_state['pred'] = json.loads(response.content.decode("utf-8"))["result"][0]
+    st.session_state['m2'] = data["Surface Carrez du 1er lot"].astype(float).values
+    mean = st.session_state['pred'] / st.session_state['m2']
 
     with col2:
         st.title('Résultats')
         st.info('Prédiction du prix:')
-        st.success(f"{round(pred)} €")
+        st.success(f"{round(st.session_state['pred'])} €")
         st.info('Prix au M2:')
         st.success(f'{round(mean[0], 2)} €')
     with col3:
@@ -85,22 +87,22 @@ if st.button("Prediction"):
         st.title("")
         st.title("")
         st.title("")
-        if 2800 < pred / m2 < 3400:
+        if 2800 < st.session_state['pred'] / st.session_state['m2'] < 3400:
             st.markdown("<div style='text-align: center;'><span style='color: #FFD700; font-size: 48px;'>👌</span><br> Prix moyen</div>", unsafe_allow_html=True)
-        elif pred / m2 > 4000:
+        elif st.session_state['pred'] / st.session_state['m2'] > 4000:
             st.markdown("<div style='text-align: center;'><span style='color: #FF0000; font-size: 48px;'>🔴</span><br> Prix élevé</div>", unsafe_allow_html=True)
         else:
             st.markdown("<div style='text-align: center;'><span style='color: #008000; font-size: 48px;'>✅</span><br> Bon prix</div>", unsafe_allow_html=True)
 
 # Bouton pour enregistrer les données
-
 if st.button("Enregistrer"):
-    data = supabase.table('prediction').insert({"Code postal_x": data["Code postal_x"][0],
-                                                "Surface Carrez du 1er lot": m2[0],
-                                                "Nombre pieces principales": data["Nombre pieces principales"][0],
-                                                "Pred": float(pred)}).execute()
-
-
+    if st.session_state['pred'] is not None and st.session_state['m2'] is not None:
+        supabase.table('prediction').insert({"Code postal_x": data["Code postal_x"][0],
+                                             "Surface Carrez du 1er lot": st.session_state['m2'][0],
+                                             "Nombre pieces principales": data["Nombre pieces principales"][0],
+                                             "Pred": float(st.session_state['pred'])}).execute()
+    else:
+        st.error("Veuillez effectuer une prédiction avant d'enregistrer.")
 
 # Récupérer les données de la table depuis la base de données
 df_pred = supabase.table("prediction").select("*").execute()
@@ -110,5 +112,5 @@ df_pred = df_pred[1].iloc[0]
 df_pred = pd.DataFrame(df_pred)
 
 st.title("")
-st.write("Apercu de la table prédiction")
+st.write("Aperçu de la table prédiction")
 st.table(df_pred.tail())
